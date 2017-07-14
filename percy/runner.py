@@ -40,25 +40,28 @@ class Runner(object):
 
         self._current_build = self.client.create_build(resources=build_resources, **kwargs)
 
-        missing_resources = self._current_build['data']['relationships']['missing-resources']
-        missing_resources = missing_resources.get('data', [])
+        try:
+            missing_resources = self._current_build['data']['relationships']['missing-resources']
+            missing_resources = missing_resources.get('data', [])
 
-        for missing_resource in missing_resources:
-            sha = missing_resource['id']
-            resource = sha_to_build_resource.get(sha)
-            # This resource should always exist, but if by chance it doesn't we make it safe here.
-            # A nicer error will be raised by the finalize API when the resource is still missing.
-            if resource:
-                print('Uploading new build resource: {}'.format(resource.resource_url))
+            for missing_resource in missing_resources:
+                sha = missing_resource['id']
+                resource = sha_to_build_resource.get(sha)
+                # This resource should always exist, but if by chance it doesn't we make it safe here.
+                # A nicer error will be raised by the finalize API when the resource is still missing.
+                if resource:
+                    print('Uploading new build resource: {}'.format(resource.resource_url))
 
-                # Optimization: we don't hold all build resources in memory. Instead we store a
-                # "local_path" variable that be used to read the file again if it is needed.
-                if resource.local_path:
-                    with open(resource.local_path, 'rb') as f:
-                        content = f.read()
-                else:
-                    content = resource.content
-                self.client.upload_resource(self._current_build['data']['id'], content)
+                    # Optimization: we don't hold all build resources in memory. Instead we store a
+                    # "local_path" variable that be used to read the file again if it is needed.
+                    if resource.local_path:
+                        with open(resource.local_path, 'rb') as f:
+                            content = f.read()
+                    else:
+                        content = resource.content
+                    self.client.upload_resource(self._current_build['data']['id'], content)
+        except KeyError:
+            print(self._current_build)
 
     def snapshot(self, **kwargs):
         # Silently pass if Percy is disabled.
